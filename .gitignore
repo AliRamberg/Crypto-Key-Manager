@@ -1,0 +1,12 @@
+.vscode
+.python-version
+
+**/.DS_Store
+**/*.swp
+**/*.log
+**/*.dSYM
+**/__pycache__
+
+**/Client/src/ref
+**/Client/Client
+**/Client/build/*
