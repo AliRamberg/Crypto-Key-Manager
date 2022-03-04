@@ -113,9 +113,14 @@ class Server:
         res.code_type = ResponseEnum.USER_MESSAGES
         res.payload_size = 0
         res.data["messages"] = bytearray()
-        for message in self.messages[req.client_id]:
-            res.payload_size += MessageData.MESSAGE_HEADER_SIZE + message.CONTENT_SIZE
-            res.data["messages"] += message.pack(req.client_id)
+        if req.client_id in self.messages:
+            for message in self.messages[req.client_id]:
+                res.payload_size += MessageData.MESSAGE_HEADER_SIZE + message.CONTENT_SIZE
+                res.data["messages"] += message.pack(req.client_id)
+        else:
+            res.payload_size = 0
+            res.data["messages"] = b""
 
     def send_message(self, req, res):
         res.code_type = ResponseEnum.MESSAGE_SENT
+    
