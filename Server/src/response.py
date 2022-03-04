@@ -19,7 +19,7 @@ class Response:
     def pack(self):
         res_header = self.init_header()
         match self.code_type:
-            case ResponseEnum.ERROR:
+            case ResponseEnum.RES_ERROR:
                 res_body = b""
             case ResponseEnum.REG_SUCCESS:
                 res_body = struct.pack(f"!{ClientData.UUID_SIZE}s", self.data["UUID"])

@@ -34,4 +34,4 @@ class ResponseEnum(IntEnum):
     PUB_KEY = 2102
     MESSAGE_SENT = 2103
     USER_MESSAGES = 2104
-    ERROR = 9000
+    RES_ERROR = 9000

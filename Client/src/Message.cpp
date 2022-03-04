@@ -102,7 +102,7 @@ void Message::receive_message()
         response_messages();
         break;
 
-    case Response_E::ERROR:
+    case Response_E::RES_ERROR:
     default:
         std::cerr << "Error: server responded with error" << std::endl;
         break;

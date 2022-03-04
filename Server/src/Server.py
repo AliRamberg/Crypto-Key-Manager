@@ -76,7 +76,7 @@ class Server:
         public_key = req.data["PUBKEY"]
         if username in self.users:
             log.info(f"'{username}' already exists")
-            res.code_type = ResponseEnum.ERROR
+            res.code_type = ResponseEnum.RES_ERROR
             res.payload_size = 0
             res.data = b""
         else:

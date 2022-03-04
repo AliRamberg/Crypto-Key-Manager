@@ -3,6 +3,7 @@
 
 #include <tuple>
 
+#ifdef __APPLE__
 #include <cryptopp/modes.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/rsa.h>
@@ -10,6 +11,16 @@
 #include <cryptopp/files.h>
 #include <cryptopp/base64.h>
 #include <cryptopp/filters.h>
+#endif
+#ifdef WIN32
+#include <modes.h>
+#include <osrng.h>
+#include <rsa.h>
+#include <aes.h>
+#include <files.h>
+#include <base64.h>
+#include <filters.h>
+#endif
 
 #define KEY_SIZE 1024
 #define SYMMETRIC_KEY_SIZE 128

@@ -6,4 +6,11 @@
 #define CLIENT_UUID_LENGTH 16
 #define USERNAME_MAX_LENGTH 255
 
+#ifdef __APPLE__
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+#ifdef WIN32
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#endif
+
 #endif

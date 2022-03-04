@@ -1,22 +1,20 @@
 #ifndef _CLIENT_H
 #define _CLIENT_H
 
-#ifdef __APPLE__
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
+
+#include "Definitions.h"
+#include "Crypto.h"
+#include "Users.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/algorithm/hex.hpp>
-
-#include "Crypto.h"
-#include "Users.h"
 
 using boost::asio::ip::tcp;
 

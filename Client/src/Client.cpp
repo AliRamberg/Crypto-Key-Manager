@@ -16,10 +16,10 @@ Client::Client()
 
 bool Client::read_creds()
 {
-    auto path = std::filesystem::path(CREDS_FILE);
-    if (!std::filesystem::exists(path))
+    // auto path = std::filesystem::path(CREDS_FILE);
+    if (!std::filesystem::exists(CREDS_FILE))
         return false;
-    std::ifstream file(path, std::ios::beg);
+    std::ifstream file(CREDS_FILE, std::ios::beg);
     std::string line;
 
     // Username

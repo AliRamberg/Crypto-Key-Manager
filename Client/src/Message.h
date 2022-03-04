@@ -1,27 +1,23 @@
 #ifndef _MESSAGE_H
 #define _MESSAGE_H
 
-#ifdef __APPLE__
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 #include <cstdint>
 #include <iostream>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <boost/asio.hpp>
-
-#include <boost/algorithm/hex.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include "Definitions.h"
 #include "Crypto.h"
 #include "Client.h"
 #include "MessageEnum.h"
+
+#include <boost/asio.hpp>
+#include <boost/algorithm/hex.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
 
 #define MESSAGE_BUFFER_SIZE 1024
 
