@@ -15,9 +15,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/algorithm/hex.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/lexical_cast.hpp>
+#include <boost/endian/conversion.hpp>
+//  
 
 #define MESSAGE_BUFFER_SIZE 1024
 

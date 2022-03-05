@@ -15,11 +15,11 @@ class RequestEnum(IntEnum):
     REQ_PUB = 1102
     SND_MESSAGE = 1103
     GET_MESSAGE = 1104
-    ERROR = 9000
+    REQ_ERROR = 9000
 
     @classmethod
     def _missing_(cls, value):
-        return RequestEnum.ERROR
+        return RequestEnum.REQ_ERROR
 
 
 class MessageType(IntEnum):

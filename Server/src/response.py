@@ -29,6 +29,8 @@ class Response:
                 res_body = struct.pack(f"!{ClientData.UUID_SIZE}s{ClientData.PUBLIC_KEY_SIZE}s", self.data["UUID"], self.data["PUBKEY"])
             case ResponseEnum.USER_MESSAGES:
                 res_body = self.data["messages"]
+            case ResponseEnum.MESSAGE_SENT:
+                res_body = struct.pack(f"!{ClientData.UUID_SIZE}sI", self.data["msg_recipient"], self.data["msg_id"])
             case _:
                 print("Response: Nothing")  # REMOVEME
                 res_body = b""

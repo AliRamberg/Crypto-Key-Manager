@@ -73,11 +73,13 @@ void Message::send_message()
     // auto header = boost::asio::buffer(&req.header, sizeof(req.header));
 
     // TODO: log everything and add log("sending message to client {addr}:{port}, maybe?")
-    std::cout << "Sending Header (" << sizeof(req.header) << ") bytes" << std::endl;
+    std::cout << "Sending Header " << sizeof(req.header) << " bytes" << std::endl;
+    // boost::endian::(req.header.code_type);
+
     boost::asio::write(s, boost::asio::buffer(&req.header, sizeof(req.header)));
 
     // send as much payload there is
-    std::cout << "Sending Body (" << req.header.payload_length << ") bytes" << std::endl;
+    std::cout << "Sending Body " << req.header.payload_length << " bytes" << std::endl;
     boost::asio::write(s, boost::asio::buffer(req.body, req.header.payload_length));
 
     // Free memory once the data is sent
@@ -87,7 +89,7 @@ void Message::send_message()
 void Message::receive_message()
 {
     std::memset(&res.header, 0, sizeof(res.header));
-    std::cout << "Reading Header (" << sizeof(res.header) << ") bytes" << std::endl;
+    std::cout << "Reading Header " << sizeof(res.header) << " bytes" << std::endl;
     boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res.header), sizeof(res.header)));
     switch (reinterpret_cast<Response_E &>(res.header.code))
     {
@@ -253,11 +255,15 @@ bool Message::request_send_symkey()
     msg.recipient = client_input();
     msg.message_type = MessageType_E::REQ_SYM;
     msg.message_size = 0;
-    req.body = nullptr;
+
+    // Body
+    req.body = new char[MESSAGE_HEADER_SIZE];
+    std::memcpy(req.body, &msg, sizeof(msg));
 
     return true;
 }
 
+// request 152
 bool Message::request_recv_symkey()
 {
     req.header.code_type = Request_E::SND_MSG;
@@ -268,7 +274,7 @@ bool Message::request_recv_symkey()
     if (std::all_of(pubkey.begin(), pubkey.end(), [](char c)
                     { return c == '\0'; }))
     {
-        throw std::runtime_error("invalid public key");
+        throw std::runtime_error("Invalid public key");
     }
     CryptoPP::SecByteBlock key;
     Crypto::generateAESKey(&key);
@@ -378,12 +384,23 @@ void Message::response_messages()
             std::cout << "Request for symmetric key\n";
             break;
         case MessageType_E::SND_SYM:
+        {
             std::cout << "Symmetric key received\n";
-            // TODO: Decrypt RSA with private key
-            std::array<char, SYMMETRIC_KEY_SIZE> sym_buf;
-            boost::asio::read(s, boost::asio::buffer(sym_buf, SYMMETRIC_KEY_SIZE));
-            users->setSymKey(res_t.sender_id, sym_buf);
-            break;
+
+            std::array<char, SYMMETRIC_KEY_SIZE> encrypted_sym;
+            boost::asio::read(s, boost::asio::buffer(encrypted_sym, SYMMETRIC_KEY_SIZE));
+
+            // RSA Decryption
+            std::string recoved_sym;
+            CryptoPP::SecByteBlock cipher((const CryptoPP::byte *)encrypted_sym.data(), encrypted_sym.size());
+            crypt->decryptData(cipher, recoved_sym);
+
+            std::array<char, SYMMETRIC_KEY_SIZE> symkey;
+            std::copy(recoved_sym.begin(), recoved_sym.end(), symkey.data());
+
+            users->setSymKey(res_t.sender_id, symkey);
+        }
+        break;
         case MessageType_E::SND_TXT:
         {
             // Full Encrypted message
@@ -396,7 +413,8 @@ void Message::response_messages()
                 bytes_read += boost::asio::read(s, boost::asio::buffer(buffer, buffer.size()));
                 full_message.insert(full_message.end(), buffer.begin(), buffer.end());
             }
-            // TODO: Decrypt AES with `sender_id` sym key
+
+            // AES Decryption
             auto symkey = users->getSymKey(res_t.sender_id);
             if (!std::all_of(symkey.begin(), symkey.end(), [](char c)
                              { return c == '\0'; }))
@@ -410,8 +428,8 @@ void Message::response_messages()
             Crypto::decryptAES(encrypted, key, recovered);
 
             std::cout << recovered;
-            break;
         }
+        break;
         default:
             std::cerr << "Failed to parse message header" << std::endl;
             return;
@@ -427,7 +445,7 @@ void Message::response_msg_sent()
     struct __res_t
     {
         std::array<char, CLIENT_UUID_LENGTH> recipient_id;
-        MessageType_E message_type;
+        std::uint32_t message_id;
     } res_t;
     std::cout << "Reading Body: " << sizeof(res_t) << " bytes" << std::endl;
     boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res_t), sizeof(res_t)));

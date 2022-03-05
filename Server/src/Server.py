@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Dict, List
 import socket
 
@@ -5,7 +6,6 @@ from Logger import log
 from MessageEnum import *
 from Data import MessageData, ClientData
 
-# from User import User
 from request import Request
 from response import Response
 
@@ -18,7 +18,8 @@ class Server:
         self.host = "127.0.0.1"
         self.users: Dict[ClientData] = {}
         # self.messages: List[MessageData] = []
-        self.messages: Dict[bytes, MessageData] = {}
+        self.messages: Dict[bytes, List[MessageData]] = defaultdict(list)
+        self.message_id = 0
 
         self.response_handlers = {
             RequestEnum.REG_REQUEST: self.register_user,
@@ -26,7 +27,12 @@ class Server:
             RequestEnum.REQ_PUB: self.request_public,
             RequestEnum.SND_MESSAGE: self.send_message,
             RequestEnum.GET_MESSAGE: self.get_messages,
+            RequestEnum.REQ_ERROR: self.res_error,
         }
+
+    def get_msg_id(self):
+        self.message_id += 1
+        return self.message_id
 
     def response_factory(self, req: Request, res: Response) -> None:
         res.version = self.VERSION
@@ -121,6 +127,15 @@ class Server:
             res.payload_size = 0
             res.data["messages"] = b""
 
-    def send_message(self, req, res):
+    def send_message(self, req: Request, res):
         res.code_type = ResponseEnum.MESSAGE_SENT
-    
+        self.messages[req.client_id].append(MessageData(req.data["msg_recipient"], req.client_id, req.data["msg_type"], req.data["msg_len"], self.get_msg_id(), req.data["msg_body"]))
+
+        res.data["msg_recipient"] = req.data["msg_recipient"]
+        res.data["msg_id"] = self.get_msg_id()
+        res.payload_size = ClientData.UUID_SIZE + MessageData.CONTENT_SIZE
+
+    def res_error(self, req, res):
+        res.code_type = ResponseEnum.REQ_ERROR
+        res.payload_size = 0
+        res.data = None

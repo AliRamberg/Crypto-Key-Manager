@@ -4,6 +4,8 @@ from Data import ClientData
 from MessageEnum import *
 import struct
 
+from Data import MessageData
+
 
 class Request:
     def __init__(self, code_type: RequestEnum, client_id: bytes, data: bytes) -> None:
@@ -13,23 +15,39 @@ class Request:
 
     @staticmethod
     def unpack_header(data):
-        fmt_header = "<16sBHI"
+        fmt_header = f"<{ClientData.UUID_SIZE}sBHI"
         return struct.unpack(fmt_header, data)
 
+    def unpack_msg_header(self, data):
+        fmt_header = f"<{ClientData.UUID_SIZE}sBI"
+        self.data["msg_recipient"], self.data["msg_type"], self.data["msg_len"] = struct.unpack(fmt_header, data[: MessageData.MESSAGE_HEADER_SIZE])
+
     def unpack_register(self, data) -> Dict[AnyStr, AnyStr]:
-        fmt = f">{ClientData.USERNAME_SIZE}s{ClientData.PUBLIC_KEY_SIZE}s"
+        fmt = f"!{ClientData.USERNAME_SIZE}s{ClientData.PUBLIC_KEY_SIZE}s"
         username, public_key = struct.unpack(fmt, data)
         self.data["USERNAME"] = username.decode("utf-8")
         self.data["PUBKEY"] = public_key
         return self.data
 
     def unpack_req_public(self, data) -> Dict[AnyStr, AnyStr]:
-        fmt = f">{ClientData.UUID_SIZE}s"
-        uuid = struct.pack(fmt, data)
-        self.data["uuid"] = uuid
+        """
+        This function is redundant as there is only one element in the body
+        """
+        fmt = f"!{ClientData.UUID_SIZE}s"
+        uuid = struct.unpack(fmt, data)
+        self.data["uuid"] = uuid[0]
         return self.data
 
-    def unpack(self, data) -> Dict:
+    def unpack_send_msg(self, data) -> Dict:
+        self.unpack_msg_header(data)
+        log.debug(f"MSG HEADER: \nToClient: {self.data['msg_recipient']}\nType: {self.data['msg_type']}\nLength: {self.data['msg_len']}")
+
+        fmt_body = f"!{self.data['msg_len']}s"
+        self.data["msg_body"] = struct.unpack(fmt_body, data[MessageData.MESSAGE_HEADER_SIZE :])[0]
+        log.debug(f"MSG BODY: {self.data['msg_body']}")
+        return self.data
+
+    def unpack(self, data: bytes) -> Dict:
         log.debug(f"Request: {self.code_type.name}")
         self.data = {}
         match self.code_type:
@@ -39,3 +57,5 @@ class Request:
                 return self.data
             case RequestEnum.REQ_PUB:
                 return self.unpack_req_public(data)
+            case RequestEnum.SND_MESSAGE:
+                return self.unpack_send_msg(data)
