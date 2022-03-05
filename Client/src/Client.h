@@ -21,6 +21,8 @@ using boost::asio::ip::tcp;
 class Client
 {
 private:
+    const size_t UUID_HEX_LEN = 32;
+    const size_t PRIVATE_HEX_LEN = 844;
     void connect(const tcp::resolver::results_type &);
     Crypto *cipher_suite;
     UsersList *users;

@@ -1,42 +1,44 @@
 #include "Message.h"
 
-Message::Message(tcp::socket &s, UsersList *users, Crypto *crypt) : s(s), users(users), crypt(crypt)
-{
-}
+Message::Message(tcp::socket &s, UsersList *users, Crypto *crypt) : s(s), users(users), crypt(crypt) {}
 
 Message::~Message()
 {
+    // Do not delete `users` and `crypt` as these are kept in the Client class
 }
 
-bool Message::read_creds()
-{
-    auto path = std::filesystem::path(CREDS_FILE);
-    if (!std::filesystem::exists(path))
-        return false;
-    std::ifstream file(path, std::ios::beg);
-    std::string line;
+// bool Message::read_creds()
+// {
+//     auto path = std::filesystem::path(CREDS_FILE);
+//     const unsigned UUID_HEX = 32;
+//     if (!std::filesystem::exists(path))
+//         return false;
+//     std::ifstream file(path, std::ios::beg);
+//     std::string line;
 
-    // Username
-    std::getline(file, line);
-    if (line.size() < 1)
-    {
-        return false;
-    }
-    username = line;
-    std::cout << "read username: " << username << '\n';
+//     // Username
+//     std::getline(file, line);
+//     if (line.size() < 1)
+//     {
+//         std::remove(CREDS_FILE);
+//         return false;
+//     }
+//     username = line;
+//     std::cout << "read username: " << username << '\n';
 
-    // ClientID
-    std::getline(file, line);
-    if (!std::all_of(line.begin(), line.end(), ::isxdigit))
-    {
-        return false;
-    }
-    auto unhex = boost::algorithm::unhex(line);
-    std::copy(unhex.begin(), unhex.end(), req.header.client_id.data());
-    std::cout << "read client_id: " << unhex << '\n';
+//     // ClientID
+//     std::getline(file, line);
+//     if (!std::all_of(line.begin(), line.end(), ::isxdigit) && line.size() < UUID_HEX)
+//     {
+//         std::remove(CREDS_FILE);
+//         return false;
+//     }
+//     auto unhex = boost::algorithm::unhex(line);
+//     std::copy(unhex.begin(), unhex.end(), req.header.client_id.data());
+//     std::cout << "read client_id: " << unhex << '\n';
 
-    return true;
-}
+//     return true;
+// }
 
 bool Message::process_msg(const int input_code)
 {
@@ -51,17 +53,17 @@ bool Message::process_msg(const int input_code)
     case 140:
         return request_messages();
     case 150:
-        return request_send_message();
+        return request_send_text();
     case 151:
-        break;
+        return request_send_symkey();
     case 152:
-        break;
+        return request_recv_symkey();
 
     default:
+        std::cerr << "Invalid option!" << std::endl;
         break;
     }
 
-    std::cerr << "failed to initialize request" << std::endl;
     return false;
 }
 
@@ -101,6 +103,9 @@ void Message::receive_message()
     case Response_E::USER_MESSAGES:
         response_messages();
         break;
+    case Response_E::MESSAGE_SENT:
+        response_msg_sent();
+        break;
 
     case Response_E::RES_ERROR:
     default:
@@ -109,20 +114,17 @@ void Message::receive_message()
     }
 }
 
-// operation 110
-bool Message::request_register(/* bool found_creds */)
+// request 110
+bool Message::request_register()
 {
-    /////// File
 
-    std::filesystem::path path(CREDS_FILE);
-    if (std::filesystem::exists(path) /* && found_creds */)
+    /////// File
+    if (std::filesystem::exists(CREDS_FILE))
     {
-        std::cerr << path << " already exists" << std::endl;
+        std::cerr << "credentials file already exists" << std::endl;
         return false;
     }
-    // std::ofstream out(path, std::ios::out | std::ios::trunc);
 
-    // std::string username;
     username.reserve(USERNAME_MAX_LENGTH);
     username.clear();
 
@@ -157,7 +159,7 @@ bool Message::request_register(/* bool found_creds */)
     return true;
 }
 
-// operation 120
+// request 120
 bool Message::request_list()
 {
     req.header.code_type = Request_E::LIST_USERS;
@@ -167,7 +169,7 @@ bool Message::request_list()
     return true;
 }
 
-// operation 130
+// request 130
 bool Message::request_public_key()
 {
     req.header.code_type = Request_E::REQ_PUB;
@@ -176,9 +178,15 @@ bool Message::request_public_key()
     std::string username;
     std::cout << "enter username: ";
     std::cin >> username;
+    if (username.length() >= USERNAME_MAX_LENGTH)
+    {
+        throw std::length_error("error: the specified username is too long, it must be less than 255 characters");
+    }
 
     auto id = users->getUid(username);
-    if (id.at(0))
+    // if (id.at(0))
+    if (std::any_of(id.begin(), id.end(), [](char c)
+                    { return c != '\0'; }))
     {
         req.body = new char[CLIENT_UUID_LENGTH];
         std::memset(req.body, 0, CLIENT_UUID_LENGTH);
@@ -199,14 +207,91 @@ bool Message::request_messages()
     return true;
 }
 
-bool Message::request_send_message()
+// request 150
+bool Message::request_send_text()
 {
+
     req.header.code_type = Request_E::SND_MSG;
-    // req.header.pa yload_length = CLIENT_UUID_LENGTH + sizeof(std::uint8_t) + 4 + MESSAGE_LENGTH
-    return false;
+    std::string content;
+
+    msg.recipient = client_input();
+    msg.message_type = MessageType_E::SND_TXT;
+
+    std::cout << "Enter message content: " << std::endl;
+    std::cin >> content;
+
+    // AES Cryptography
+    auto symkey = users->getSymKey(username);
+
+    if (std::all_of(symkey.begin(), symkey.end(), [](char c)
+                    { return c == '\0'; }))
+    {
+        throw std::runtime_error("invalid symmetric key");
+    }
+
+    CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
+    std::string cipher;
+    Crypto::encryptAES(content, key, cipher);
+
+    msg.message_size = cipher.size();
+    req.header.payload_length = MESSAGE_HEADER_SIZE + cipher.size();
+
+    // Body
+    req.body = new char[req.header.payload_length];
+    std::memcpy(req.body, &msg, sizeof(msg));
+    std::memcpy(req.body + sizeof(msg), cipher.c_str(), cipher.size());
+
+    return true;
 }
 
-// operation 110
+// request 151
+bool Message::request_send_symkey()
+{
+    req.header.code_type = Request_E::SND_MSG;
+    req.header.payload_length = MESSAGE_HEADER_SIZE;
+
+    msg.recipient = client_input();
+    msg.message_type = MessageType_E::REQ_SYM;
+    msg.message_size = 0;
+    req.body = nullptr;
+
+    return true;
+}
+
+bool Message::request_recv_symkey()
+{
+    req.header.code_type = Request_E::SND_MSG;
+
+    auto client_id = client_input();
+    auto pubkey = users->getPubKey(client_id);
+
+    if (std::all_of(pubkey.begin(), pubkey.end(), [](char c)
+                    { return c == '\0'; }))
+    {
+        throw std::runtime_error("invalid public key");
+    }
+    CryptoPP::SecByteBlock key;
+    Crypto::generateAESKey(&key);
+
+    // RSA Encryption
+    CryptoPP::SecByteBlock cipher;
+    std::string str_symkey((char *)key.BytePtr(), key.size());
+    crypt->encryptData(str_symkey, &cipher);
+
+    msg.message_type = MessageType_E::SND_SYM;
+    msg.recipient = client_id;
+    msg.message_size = cipher.size();
+    req.header.payload_length = MESSAGE_HEADER_SIZE + cipher.size();
+
+    // Body
+    req.body = new char[req.header.payload_length];
+    std::memcpy(req.body, &msg, sizeof(msg));
+    std::memcpy(req.body + sizeof(msg), cipher.BytePtr(), cipher.size());
+
+    return true;
+}
+
+// response 110
 void Message::response_register()
 {
     struct __res_t
@@ -229,7 +314,7 @@ void Message::response_register()
     out.close();
 }
 
-// operation 120
+// response 120
 void Message::response_list()
 {
     struct __res_t
@@ -249,7 +334,7 @@ void Message::response_list()
     }
 }
 
-// operation 130
+// response 130
 void Message::response_public_key()
 {
     struct __res_t
@@ -262,6 +347,7 @@ void Message::response_public_key()
     users->setPubKey(res_t.client_id, res_t.pubkey);
 }
 
+// response 140
 void Message::response_messages()
 {
     if (!res.header.payload_size)
@@ -272,7 +358,7 @@ void Message::response_messages()
 
     struct __res_t
     {
-        std::array<char, CLIENT_UUID_LENGTH> client_id;
+        std::array<char, CLIENT_UUID_LENGTH> sender_id;
         std::uint32_t message_id;
         MessageType_E message_type;
         std::uint32_t message_size;
@@ -284,7 +370,7 @@ void Message::response_messages()
     std::cout << "New messages: " << msgs_bytes_left << " bytes" << std::endl;
     while (bytes_read < msgs_bytes_left)
     {
-        std::cout << "From: " << res_t.client_id.data() << '\n'
+        std::cout << "From: " << res_t.sender_id.data() << '\n'
                   << "Content: ";
         switch (res_t.message_size)
         {
@@ -293,19 +379,37 @@ void Message::response_messages()
             break;
         case MessageType_E::SND_SYM:
             std::cout << "Symmetric key received\n";
+            // TODO: Decrypt RSA with private key
             std::array<char, SYMMETRIC_KEY_SIZE> sym_buf;
             boost::asio::read(s, boost::asio::buffer(sym_buf, SYMMETRIC_KEY_SIZE));
-            users->setSymKey(res_t.client_id, sym_buf);
+            users->setSymKey(res_t.sender_id, sym_buf);
             break;
         case MessageType_E::SND_TXT:
         {
+            // Full Encrypted message
+            std::vector<char> full_message;
+
             std::array<char, MESSAGE_BUFFER_SIZE> buffer;
             unsigned cur_msg_bytes_read = 0;
             while (cur_msg_bytes_read < res_t.message_size)
             {
                 bytes_read += boost::asio::read(s, boost::asio::buffer(buffer, buffer.size()));
-                std::cout << buffer.data();
+                full_message.insert(full_message.end(), buffer.begin(), buffer.end());
             }
+            // TODO: Decrypt AES with `sender_id` sym key
+            auto symkey = users->getSymKey(res_t.sender_id);
+            if (!std::all_of(symkey.begin(), symkey.end(), [](char c)
+                             { return c == '\0'; }))
+            {
+                std::cout << "can't decrypt message\n";
+                break;
+            }
+            std::string recovered;
+            std::string encrypted(full_message.data());
+            CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
+            Crypto::decryptAES(encrypted, key, recovered);
+
+            std::cout << recovered;
             break;
         }
         default:
@@ -315,4 +419,35 @@ void Message::response_messages()
         std::cout << ".\n.\n-----<EOM>-----\n"
                   << std::endl;
     }
+}
+
+// response 150 | 151 | 152
+void Message::response_msg_sent()
+{
+    struct __res_t
+    {
+        std::array<char, CLIENT_UUID_LENGTH> recipient_id;
+        MessageType_E message_type;
+    } res_t;
+    std::cout << "Reading Body: " << sizeof(res_t) << " bytes" << std::endl;
+    boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res_t), sizeof(res_t)));
+}
+
+std::array<char, CLIENT_UUID_LENGTH> Message::client_input()
+{
+    std::string username;
+    std::cout << "Enter username of recipient: ";
+    std::cin >> username;
+    if (username.length() >= USERNAME_MAX_LENGTH)
+    {
+        throw std::length_error("error: the specified username is too long, it must be less than 255 characters");
+    }
+
+    auto user_id = users->getUid(username);
+    if (std::all_of(user_id.begin(), user_id.end(), [](char c)
+                    { return c == '\0'; }))
+    {
+        throw std::runtime_error(std::string("Username \"" + username + "\" was not found\n"));
+    }
+    return user_id;
 }

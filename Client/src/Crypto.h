@@ -48,9 +48,9 @@ public:
     void decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered) const;
 
     // AES Cipher Suite
-    static void generateAESKey(CryptoPP::SecByteBlock *key_out, CryptoPP::SecByteBlock *iv_out);
-    static void encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, std::string &cipher);
-    static void decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, std::string &recovered);
+    static void generateAESKey(CryptoPP::SecByteBlock *key_out);
+    static void encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, std::string &cipher);
+    static void decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, std::string &recovered);
 };
 
 #endif

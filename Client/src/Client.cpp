@@ -2,13 +2,17 @@
 
 Client::Client()
 {
-    if (!read_creds())
+    if (!std::filesystem::exists(CREDS_FILE))
     {
         cipher_suite = new Crypto();
     }
+    else if (!read_creds())
+    {
+        throw std::runtime_error("invalid credentials file");
+    }
     else
     {
-        // using the already set private key
+        // valid creds file
         cipher_suite = new Crypto(encoded_private_key);
     }
     users = new UsersList();
@@ -17,8 +21,7 @@ Client::Client()
 bool Client::read_creds()
 {
     // auto path = std::filesystem::path(CREDS_FILE);
-    if (!std::filesystem::exists(CREDS_FILE))
-        return false;
+
     std::ifstream file(CREDS_FILE, std::ios::beg);
     std::string line;
 
@@ -29,22 +32,26 @@ bool Client::read_creds()
         return false;
     }
     username = line;
-    std::cout << "read username: " << username << '\n';
+    std::cout << "parse username: " << username << '\n';
 
     // ClientID
     std::getline(file, line);
-    if (!std::all_of(line.begin(), line.end(), ::isxdigit))
+    if (!std::all_of(line.begin(), line.end(), ::isxdigit) || line.size() != Client::UUID_HEX_LEN)
     {
         return false;
     }
     auto unhex = boost::algorithm::unhex(line);
     std::copy(unhex.begin(), unhex.end(), client_id.data());
-    std::cout << "read client_id: " << unhex << '\n';
+    std::cout << "parse client_id: " << unhex << '\n';
 
     // Private Key
-    std::getline(file, encoded_private_key);
-    // std::copy(line.begin(), line.end(), private_key.data());
-    std::cout << "read private_key: " << encoded_private_key << '\n';
+    std::getline(file, line);
+    if (/* !std::all_of(line.begin(), line.end(), ::is) ||  */ line.size() != Client::PRIVATE_HEX_LEN)
+    {
+        return false;
+    }
+    encoded_private_key = line;
+    std::cout << "parse private_key: " << encoded_private_key << '\n';
 
     return true;
 }
@@ -68,8 +75,16 @@ int Client::main_menu()
         << "152) Send your symmetric key\n"
         << "0) Exit Client\n"
         << "? ";
-    int input_code;
-    std::cin >> input_code;
+    std::string input;
+    std::cin >> input;
+
+    if (std::all_of(input.begin(), input.end(), [](char c)
+                    { return isdigit(c) == 0; }))
+    {
+        return -1;
+    }
+
+    int input_code = std::atoi(input.c_str());
 
     if (!input_code)
     {

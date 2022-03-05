@@ -145,20 +145,21 @@ int main(int argc, char const *argv[])
     try
     {
         std::cout << "\n\n=== === === Generating AES Key === === ===" << std::endl;
-        CryptoPP::SecByteBlock key, iv;
-        Crypto::generateAESKey(&key, &iv);
+        CryptoPP::SecByteBlock key;
+        Crypto::generateAESKey(&key);
 
         std::string plain = "SHALOM OLAM!";
         std::cout << "Plain String: " << plain << std::endl;
+        std::cout << "Key: '" << key.BytePtr() << "'\nKey size: " << key.size() << std::endl;
 
         std::cout << "\n\n=== === === Encrypting Data === === ===" << std::endl;
         std::string cipher;
-        Crypto::encryptAES(plain, key, iv, cipher);
+        Crypto::encryptAES(plain, key, cipher);
         std::cout << "Encrypted String: " << cipher << std::endl;
 
         std::cout << "\n\n=== === === Decrypting Data === === ===" << std::endl;
         std::string recovered;
-        Crypto::decryptAES(cipher, key, iv, recovered);
+        Crypto::decryptAES(cipher, key, recovered);
         std::cout << "Recovered String: " << recovered << std::endl;
     }
     catch (const std::exception &e)

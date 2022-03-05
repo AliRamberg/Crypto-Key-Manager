@@ -6,7 +6,7 @@ User::User(std::array<char, USERNAME_MAX_LENGTH> &name, std::array<char, CLIENT_
     pubkey.fill('\0');
     symkey.fill('\0');
 }
-std::string User::getName() { return username; }
+std::string User::getName() const { return username; }
 std::array<char, CLIENT_UUID_LENGTH> User::getUid() const { return uid; }
 std::array<char, PUBLIC_KEY_SIZE> User::getKey() { return pubkey; }
 void User::setPubKey(std::array<char, PUBLIC_KEY_SIZE> &key)
@@ -17,6 +17,16 @@ void User::setPubKey(std::array<char, PUBLIC_KEY_SIZE> &key)
 void User::setSymKey(std::array<char, SYMMETRIC_KEY_SIZE> &key)
 {
     symkey = key;
+}
+
+std::array<char, PUBLIC_KEY_SIZE> User::getPubKey() const
+{
+    return pubkey;
+}
+
+std::array<char, SYMMETRIC_KEY_SIZE> User::getSymKey() const
+{
+    return symkey;
 }
 
 void UsersList::append(User &u)
@@ -33,24 +43,24 @@ void UsersList::append(User &u)
     }
 }
 
-const User *UsersList::getUserByName(std::string &name)
+const User *UsersList::getUserByName(std::string &name) const
 {
-    auto found = std::find_if(list.begin(), list.end(), [&name](User &u)
+    auto found = std::find_if(list.begin(), list.end(), [&name](const User &u)
                               { return u.getName() == name; });
     if (found != list.end())
     {
-        return &(*found);
+        return (const User *)&(*found);
     }
     std::cerr << "failed to locate user" << '\n';
     return nullptr;
 }
-User *UsersList::getUserById(std::array<char, CLIENT_UUID_LENGTH> &id)
+User *UsersList::getUserById(std::array<char, CLIENT_UUID_LENGTH> &id) const
 {
-    auto found = std::find_if(list.begin(), list.end(), [&id](User &u)
+    auto found = std::find_if(list.begin(), list.end(), [&id](const User &u)
                               { return u.getUid() == id; });
     if (found != list.end())
     {
-        return &(*found);
+        return (User *)&(*found);
     }
     std::cerr << "failed to locate user" << '\n';
     return nullptr;
@@ -78,4 +88,44 @@ void UsersList::setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<c
     User *user = getUserById(id);
     std::cout << "Update User[" << user->getName() << "] symmetric key";
     user->setSymKey(key);
+}
+
+std::array<char, SYMMETRIC_KEY_SIZE> UsersList::getSymKey(std::string &username) const
+{
+    const User *user = getUserByName(username);
+    if (user)
+    {
+        return user->getSymKey();
+    }
+    return {};
+}
+
+std::array<char, SYMMETRIC_KEY_SIZE> UsersList::getSymKey(std::array<char, CLIENT_UUID_LENGTH> &uid) const
+{
+    const User *user = getUserById(uid);
+    if (user)
+    {
+        return user->getSymKey();
+    }
+    return {};
+}
+
+std::array<char, PUBLIC_KEY_SIZE> UsersList::getPubKey(std::string &username) const
+{
+    const User *user = getUserByName(username);
+    if (user)
+    {
+        return user->getPubKey();
+    }
+    return {};
+}
+
+std::array<char, PUBLIC_KEY_SIZE> UsersList::getPubKey(std::array<char, CLIENT_UUID_LENGTH> &uid) const
+{
+    const User *user = getUserById(uid);
+    if (user)
+    {
+        return user->getPubKey();
+    }
+    return {};
 }

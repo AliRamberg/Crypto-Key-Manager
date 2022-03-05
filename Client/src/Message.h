@@ -24,7 +24,7 @@
 using namespace boost::asio::ip;
 
 #pragma pack(push, 1)
-struct _req_h
+struct __req_h
 {
     // char client_id[CLIENT_UUID_LENGTH];
     std::array<char, CLIENT_UUID_LENGTH> client_id;
@@ -33,22 +33,29 @@ struct _req_h
     std::uint32_t payload_length;
 };
 
-struct RequestMessage
+struct Request
 {
-    struct _req_h header;
+    struct __req_h header;
     char *body;
 };
 
-struct _res_h
+struct __res_h
 {
     std::uint8_t version;
     std::uint16_t code;
     std::uint32_t payload_size;
 };
-struct ResponseMessage
+struct Response
 {
-    struct _res_h header;
+    struct __res_h header;
     // char *body;
+};
+
+struct msg
+{
+    std::array<char, CLIENT_UUID_LENGTH> recipient;
+    MessageType_E message_type;
+    std::uint32_t message_size;
 };
 #pragma pack(pop)
 
@@ -57,32 +64,31 @@ class Message
 private:
     tcp::socket &s;
     std::string username;
-    struct RequestMessage req;
-    struct ResponseMessage res;
+    struct msg msg;
+    struct Request req;
+    struct Response res;
 
     UsersList *users;
     Crypto *crypt;
 
-    // boost::asio::const_buffer data_header() const;
-
-    bool read_creds(/* std::filesystem::path & */);
+    std::array<char, CLIENT_UUID_LENGTH> client_input();
+    std::array<char, PUBLIC_KEY_SIZE> public_key;
 
     // Requests
     bool request_register(/* bool */);
     bool request_list();
     bool request_public_key();
     bool request_messages();
-    bool request_send_message();
-    bool process_code_151();
-    bool process_code_152();
+    bool request_send_text();
+    bool request_send_symkey();
+    bool request_recv_symkey();
 
     // Responses
     void response_register();
     void response_list();
     void response_public_key();
     void response_messages();
-
-    std::array<char, PUBLIC_KEY_SIZE> public_key;
+    void response_msg_sent();
 
 public:
     Message(tcp::socket &, UsersList *users, Crypto *crypt);
@@ -91,7 +97,6 @@ public:
     bool process_msg(const int);
     void send_message();
     void receive_message();
-    boost::asio::mutable_buffer data();
 };
 
 #endif

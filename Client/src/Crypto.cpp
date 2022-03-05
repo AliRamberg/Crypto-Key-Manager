@@ -4,25 +4,27 @@ Crypto::Crypto()
 {
     CryptoPP::AutoSeededRandomPool rng;
     private_key.Initialize(rng, KEY_SIZE);
-    // private_key.GenerateRandomWithKeySize(rng, KEY_SIZE);
+    if (!private_key.Validate(rng, 2))
+    {
+        throw std::runtime_error("Rsa private key validation failed");
+    }
 
     public_key = CryptoPP::RSA::PublicKey(private_key);
 }
 
 Crypto::Crypto(std::string &encoded_private)
 {
-    // std::cout << "1" << std::endl;
-    // std::string decoded;
-    // CryptoPP::Base64Decoder decoder(new CryptoPP::StringSink(decoded));
-    // decoder.Put((byte *)encoded_private.data(), encoded_private.size());
-    // decoder.MessageEnd();
-    // // CryptoPP::StringSource source(encoded_private, true);
-    // std::cout << "2" << std::endl;
 
     std::string decoded = decodePrvKey(encoded_private);
+    CryptoPP::AutoSeededRandomPool rng;
 
     CryptoPP::StringSource source(decoded, true);
     private_key.Load(source);
+    if (!private_key.Validate(rng, 2))
+    {
+        throw std::runtime_error("Rsa private key validation failed");
+    }
+    public_key = CryptoPP::RSA::PublicKey(private_key);
 }
 
 std::string Crypto::encodePrvKey() const
@@ -154,30 +156,33 @@ void Crypto::decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered)
     recovered = recovered_str;
 }
 
-void Crypto::generateAESKey(CryptoPP::SecByteBlock *key_out, CryptoPP::SecByteBlock *iv_out)
+void Crypto::generateAESKey(CryptoPP::SecByteBlock *key_out)
 {
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::SecByteBlock key(CryptoPP::AES::DEFAULT_KEYLENGTH);
-    CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
 
     rng.GenerateBlock(key, key.size());
-    iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
 
     *key_out = key;
-    *iv_out = iv;
 }
 
-void Crypto::encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, std::string &cipher)
+void Crypto::encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, std::string &cipher)
 {
     CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption e;
+    CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
+    iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
+
     e.SetKeyWithIV(key, key.size(), iv);
 
     CryptoPP::StringSource s(plain, true, new CryptoPP::StreamTransformationFilter(e, new CryptoPP::StringSink(cipher)));
 }
 
-void Crypto::decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, std::string &recovered)
+void Crypto::decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, std::string &recovered)
 {
     CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption d;
+    CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
+    iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
+
     d.SetKeyWithIV(key, key.size(), iv);
 
     CryptoPP::StringSource s(cipher, true, new CryptoPP::StreamTransformationFilter(d, new CryptoPP::StringSink(recovered))); // StringSource
