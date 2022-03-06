@@ -2,7 +2,6 @@
 
 Crypto::Crypto()
 {
-    CryptoPP::AutoSeededRandomPool rng;
     private_key.Initialize(rng, KEY_SIZE);
     if (!private_key.Validate(rng, 2))
     {
@@ -16,7 +15,6 @@ Crypto::Crypto(std::string &encoded_private)
 {
 
     std::string decoded = decodePrvKey(encoded_private);
-    CryptoPP::AutoSeededRandomPool rng;
 
     CryptoPP::StringSource source(decoded, true);
     private_key.Load(source);
@@ -93,72 +91,42 @@ std::string Crypto::getPrivateKey() const
 
 std::string Crypto::getPublicKey() const
 {
-    // CryptoPP::RSAFunction publicKey(private_key);
-    // std::string key;
-    // CryptoPP::StringSink ss(key);
-    // publicKey.Save(ss);
-    // return key;
     std::string key;
     CryptoPP::StringSink ss(key);
     public_key.Save(ss);
     return key;
 }
 
-void Crypto::encryptData(std::string &plain_string, CryptoPP::SecByteBlock *cipher_text) const
+// void Crypto::encryptData(std::string &plain_string, CryptoPP::SecByteBlock *cipher_text) const
+std::string Crypto::encryptData(std::string &plain_string, std::string &public_key)
 {
-    CryptoPP::AutoSeededRandomPool rng;
-    CryptoPP::RSAES_OAEP_SHA_Encryptor encryptor(public_key);
+    CryptoPP::RSA::PublicKey pub;
 
-    CryptoPP::SecByteBlock plaintxt(plain_string.size());
-    std::memcpy(plaintxt, plain_string.data(), plain_string.size());
+    CryptoPP::StringSource pub_source(reinterpret_cast<const CryptoPP::byte *>(public_key.data()), public_key.size(), true);
+    pub.Load(pub_source);
 
-    // Validate encryptor
-    assert(0 != encryptor.FixedMaxPlaintextLength());
-    assert(plaintxt.size() <= encryptor.FixedMaxPlaintextLength());
+    std::string cipher;
 
-    // Create cipher text space
-    size_t ecl = encryptor.CiphertextLength(plaintxt.size());
-    assert(0 != ecl);
-    CryptoPP::SecByteBlock cipher(ecl);
-
-    encryptor.Encrypt(rng, plaintxt, plaintxt.size(), cipher);
-    *cipher_text = cipher;
+    CryptoPP::RSAES_OAEP_SHA_Encryptor e(pub);
+    CryptoPP::StringSource ss(plain_string, true, new CryptoPP::PK_EncryptorFilter(rng, e, new CryptoPP::StringSink(cipher)));
+    return cipher;
 }
 
-void Crypto::decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered) const
+// void Crypto::decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered) const
+std::string Crypto::decryptData(std::string &cipher)
 {
-    CryptoPP::AutoSeededRandomPool rng;
+    std::string decrypted;
 
-    CryptoPP::RSAES_OAEP_SHA_Decryptor decryptor(private_key);
+    CryptoPP::RSAES_OAEP_SHA_Decryptor d(private_key);
+    CryptoPP::StringSource ss_cipher(cipher, true, new CryptoPP::PK_DecryptorFilter(rng, d, new CryptoPP::StringSink(decrypted)));
 
-    // Validate decryptor
-    assert(0 != decryptor.FixedCiphertextLength());
-    assert(cipher.size() <= decryptor.FixedCiphertextLength());
-
-    // Create recovered text space
-    size_t dpl = decryptor.MaxPlaintextLength(cipher.size());
-    assert(0 != dpl);
-    CryptoPP::SecByteBlock recovered_block(dpl);
-
-    CryptoPP::DecodingResult result = decryptor.Decrypt(rng, cipher, cipher.size(), recovered_block);
-
-    // More sanity checks
-    assert(result.isValidCoding);
-    assert(result.messageLength <= decryptor.MaxPlaintextLength(cipher.size()));
-
-    // At this point, we can set the size of the recovered
-    //  data. Until decryption occurs (successfully), we
-    //  only know its maximum size
-    recovered_block.resize(result.messageLength);
-    std::string recovered_str(recovered_block.begin(), recovered_block.end());
-
-    // *recovered_text = recovered;
-    recovered = recovered_str;
+    return decrypted;
 }
 
 void Crypto::generateAESKey(CryptoPP::SecByteBlock *key_out)
 {
     CryptoPP::AutoSeededRandomPool rng;
+
     CryptoPP::SecByteBlock key(CryptoPP::AES::DEFAULT_KEYLENGTH);
 
     rng.GenerateBlock(key, key.size());

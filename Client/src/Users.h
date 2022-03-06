@@ -22,7 +22,7 @@ public:
     std::array<char, CLIENT_UUID_LENGTH> getUid() const;
     std::array<char, PUBLIC_KEY_SIZE> getKey();
     void setPubKey(std::array<char, PUBLIC_KEY_SIZE> &key);
-    void setSymKey(std::array<char, SYMMETRIC_KEY_SIZE> &key);
+    void setSymKey(std::string &key);
     std::array<char, PUBLIC_KEY_SIZE> getPubKey() const;
     std::array<char, SYMMETRIC_KEY_SIZE> getSymKey() const;
 };
@@ -40,7 +40,7 @@ public:
     std::string getUsername(std::array<char, CLIENT_UUID_LENGTH> &uid);
 
     void setPubKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<char, PUBLIC_KEY_SIZE> key);
-    void setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<char, SYMMETRIC_KEY_SIZE> key);
+    void setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::string &key);
 
     std::array<char, SYMMETRIC_KEY_SIZE> getSymKey(std::string &username) const;
     std::array<char, SYMMETRIC_KEY_SIZE> getSymKey(std::array<char, CLIENT_UUID_LENGTH> &uid) const;

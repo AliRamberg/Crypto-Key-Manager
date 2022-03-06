@@ -10,7 +10,6 @@
 #include <cryptopp/aes.h>
 #include <cryptopp/files.h>
 #include <cryptopp/base64.h>
-#include <cryptopp/filters.h>
 #endif
 #ifdef WIN32
 #include <modes.h>
@@ -19,7 +18,6 @@
 #include <aes.h>
 #include <files.h>
 #include <base64.h>
-#include <filters.h>
 #endif
 
 #define KEY_SIZE 1024
@@ -29,6 +27,8 @@
 class Crypto
 {
 private:
+    CryptoPP::AutoSeededRandomPool rng;
+
     CryptoPP::RSA::PrivateKey private_key;
     CryptoPP::RSA::PublicKey public_key;
 
@@ -44,8 +44,11 @@ public:
     std::string encodePrvKey() const;
     std::string getPublicKey() const;
 
-    void encryptData(std::string &plain_string, CryptoPP::SecByteBlock *cipher) const;
-    void decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered) const;
+    // void encryptData(std::string &plain_string, CryptoPP::SecByteBlock *cipher) const;
+    // void decryptData(CryptoPP::SecByteBlock &cipher, std::string &recovered) const;
+
+    std::string encryptData(std::string &plain_string, std::string &public_key);
+    std::string decryptData(std::string &cipher);
 
     // AES Cipher Suite
     static void generateAESKey(CryptoPP::SecByteBlock *key_out);

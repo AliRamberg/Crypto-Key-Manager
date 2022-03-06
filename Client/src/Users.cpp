@@ -15,9 +15,9 @@ void User::setPubKey(std::array<char, PUBLIC_KEY_SIZE> &key)
     pubkey = key;
 }
 
-void User::setSymKey(std::array<char, SYMMETRIC_KEY_SIZE> &key)
+void User::setSymKey(std::string &key)
 {
-    symkey = key;
+    std::copy(key.begin(), key.end(), symkey.data());
 }
 
 std::array<char, PUBLIC_KEY_SIZE> User::getPubKey() const
@@ -62,6 +62,7 @@ User *UsersList::getUserById(std::array<char, CLIENT_UUID_LENGTH> &id) const
     {
         return (User *)&(*found);
     }
+
     return nullptr;
 }
 
@@ -91,9 +92,14 @@ void UsersList::setPubKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<c
     user->setPubKey(key);
 }
 
-void UsersList::setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<char, SYMMETRIC_KEY_SIZE> key)
+void UsersList::setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::string &key)
 {
+
     User *user = getUserById(id);
+    if (!user)
+    {
+        throw std::runtime_error("User was not found, try to refresh user list");
+    }
     std::cout << "Update User[" << user->getName() << "] symmetric key\n";
     user->setSymKey(key);
 }
@@ -103,8 +109,10 @@ std::array<char, SYMMETRIC_KEY_SIZE> UsersList::getSymKey(std::string &username)
     const User *user = getUserByName(username);
     if (user)
     {
+        std::cout << "USER FOUND" << std::endl;
         return user->getSymKey();
     }
+    std::cout << "USER NOT FOUND" << std::endl;
     return {};
 }
 

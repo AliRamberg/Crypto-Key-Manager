@@ -20,7 +20,8 @@ class Request:
 
     def unpack_msg_header(self, data):
         fmt_header = f"<{ClientData.UUID_SIZE}sBI"
-        self.data["msg_recipient"], self.data["msg_type"], self.data["msg_len"] = struct.unpack(fmt_header, data[: MessageData.MESSAGE_HEADER_SIZE])
+        self.data["msg_recipient"], self.data["msg_type"], self.data["msg_len"] = struct.unpack(fmt_header, data[: MessageData.MESSAGE_REQ_HEADER_SIZE])
+        log.debug(f"MSG HEADER: \nToClient: {self.data['msg_recipient']}\nType: {self.data['msg_type']}\nLength: {self.data['msg_len']}")
 
     def unpack_register(self, data) -> Dict[AnyStr, AnyStr]:
         fmt = f"!{ClientData.USERNAME_SIZE}s{ClientData.PUBLIC_KEY_SIZE}s"
@@ -40,10 +41,12 @@ class Request:
 
     def unpack_send_msg(self, data) -> Dict:
         self.unpack_msg_header(data)
-        log.debug(f"MSG HEADER: \nToClient: {self.data['msg_recipient']}\nType: {self.data['msg_type']}\nLength: {self.data['msg_len']}")
 
         fmt_body = f"!{self.data['msg_len']}s"
-        self.data["msg_body"] = struct.unpack(fmt_body, data[MessageData.MESSAGE_HEADER_SIZE :])[0]
+        if self.data["msg_len"] > 0:
+            self.data["msg_body"] = struct.unpack(fmt_body, data[MessageData.MESSAGE_REQ_HEADER_SIZE :])[0]
+        else:
+            self.data["msg_body"] = b""
         log.debug(f"MSG BODY: {self.data['msg_body']}")
         return self.data
 

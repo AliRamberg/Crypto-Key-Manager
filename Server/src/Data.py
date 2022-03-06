@@ -34,7 +34,8 @@ class MessageData:
     ID_SIZE = 4
     TYPE_SIZE = 1
     CONTENT_SIZE = 4
-    MESSAGE_HEADER_SIZE = ClientData.UUID_SIZE + ID_SIZE + TYPE_SIZE + CONTENT_SIZE
+    MESSAGE_REQ_HEADER_SIZE = ClientData.UUID_SIZE + TYPE_SIZE + CONTENT_SIZE
+    MESSAGE_RES_HEADER_SIZE = ClientData.UUID_SIZE + ID_SIZE + TYPE_SIZE + CONTENT_SIZE
     msg_id = 0
 
     ID: int  # 4 bytes
@@ -42,7 +43,7 @@ class MessageData:
     FromClient: int  # 16 bytes
     Type: MessageType  # 1 byte
     ContentSize: int  # 4 bytes
-    Content: ByteString  # Blob?
+    Content: bytes
 
     def __init__(self, _to, _from, _type, _size, _content) -> None:
         self.ToClient = _to
@@ -56,5 +57,5 @@ class MessageData:
         MessageData.msg_id += 1
         return MessageData.msg_id
 
-    def pack(self, client_id):
-        return struct.pack(f"!{ClientData.UUID_SIZE}sIBI{self.ContentSize}s", client_id, self.ID, self.Type, self.ContentSize, self.Content)
+    def pack(self):
+        return struct.pack(f"<{ClientData.UUID_SIZE}sIBI{self.ContentSize}s", self.FromClient, self.ID, self.Type, self.ContentSize, self.Content)

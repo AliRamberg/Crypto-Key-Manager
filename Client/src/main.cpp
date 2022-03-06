@@ -4,14 +4,20 @@
 int main(void)
 {
 
-    try
-    {
-        Client c;
-        auto server_endpoints = c.read_server_info();
-        std::string host = server_endpoints.front();
-        std::string port = server_endpoints.back();
+    Client c;
+    auto server_endpoints = c.read_server_info();
+    std::string host = server_endpoints.front();
+    std::string port = server_endpoints.back();
 
-        while (true)
+    while (true)
+    {
+        int input_code = c.main_menu();
+        if (!input_code)
+        {
+            return EXIT_SUCCESS;
+        }
+
+        try
         {
             /* establish socket connection */
             boost::asio::io_context io_context;
@@ -23,12 +29,6 @@ int main(void)
             // TODO: Convert all the codes ints to Enums
 
             Message msg(s, c.getID(), c.getUsers(), c.getCipherSuite());
-            int input_code = c.main_menu();
-            if (!input_code)
-            {
-                s.close();
-                return EXIT_SUCCESS;
-            }
 
             if (msg.process_msg(input_code))
             {
@@ -36,10 +36,10 @@ int main(void)
                 msg.receive_message();
             }
         }
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << e.what() << std::endl;
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
     }
     return 0;
 }

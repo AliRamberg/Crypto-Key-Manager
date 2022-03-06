@@ -1,6 +1,12 @@
 #ifndef _MESSAGE_H
 #define _MESSAGE_H
 
+#define MESSAGE_ID_SIZE 4
+#define MESSAGE_TYPE_SIZE 1
+#define MESSAGE_CONTENT_SIZE 4
+#define MESSAGE_REQ_HEADER_SIZE (CLIENT_UUID_LENGTH + MESSAGE_TYPE_SIZE + MESSAGE_CONTENT_SIZE)
+#define MESSAGE_RES_HEADER_SIZE (CLIENT_UUID_LENGTH + MESSAGE_ID_SIZE + MESSAGE_TYPE_SIZE + MESSAGE_CONTENT_SIZE)
+
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -70,7 +76,7 @@ private:
     UsersList *users;
     Crypto *crypt;
 
-    std::array<char, CLIENT_UUID_LENGTH> client_input();
+    std::tuple<std::string, std::array<char, CLIENT_UUID_LENGTH>> client_input();
     std::array<char, PUBLIC_KEY_SIZE> public_key;
 
     // Requests

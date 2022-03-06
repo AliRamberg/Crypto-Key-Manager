@@ -140,7 +140,7 @@ std::tuple<int, int> func()
 //     std::cout << "Decrypted Data: " << encodedDecryptedText << std::endl;
 // }
 
-int main(int argc, char const *argv[])
+/* int main(int argc, char const *argv[])
 {
     try
     {
@@ -166,5 +166,23 @@ int main(int argc, char const *argv[])
     {
         std::cerr << e.what() << std::endl;
     }
+    return 0;
+} */
+
+int main(int argc, char const *argv[])
+{
+#define CLIENT_UUID_LENGTH 16
+#pragma pack(push, 1)
+    struct __res_t
+    {
+        std::array<char, CLIENT_UUID_LENGTH> sender_id;
+        std::uint32_t message_id;
+        std::uint8_t message_type;
+        std::uint32_t message_size;
+    } res_t;
+#pragma pack(pop)
+
+    std::cout << "this is a test, and it that's it :) ) ) \n"
+              << "Struct size: " << sizeof(res_t) << std::endl;
     return 0;
 }

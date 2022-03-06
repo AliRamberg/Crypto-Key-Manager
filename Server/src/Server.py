@@ -75,65 +75,36 @@ class Server:
         conn = key.fileobj
         addr = key.data["addr"]
 
-        print(f"ready to read!")
         header = conn.recv(HEADER_SIZE)
-        if header:
-            # Header
-            log.debug("Received message ({} bytes): {}".format(len(header), header))
-            client_id, _, code_type, length = Request.unpack_header(header)
+        if not header:
+            return self.close_connection(conn, addr)
 
-            # Body
-            data = conn.recv(length)
-            log.debug("Received message ({} bytes): {}".format(len(data), data))
-            key.data["req"] = Request(RequestEnum(code_type), client_id, data)
-            data = key.data
-            data["callback"] = self.write
-            self.sel.modify(conn, selectors.EVENT_WRITE, data)
+        # Header
+        log.debug("Received message ({} bytes): {}".format(len(header), header))
+        client_id, _, code_type, length = Request.unpack_header(header)
 
-        else:
-            log.info(f"[-] Connection terminated from {addr[0]}:{addr[1]}")
-            self.sel.unregister(conn)
-            conn.close()
+        # Body
+        data = conn.recv(length)
+        log.debug("Received message ({} bytes): {}".format(len(data), data))
+        key.data["req"] = Request(RequestEnum(code_type), client_id, data)
+        data = key.data
+        data["callback"] = self.write
+        self.sel.modify(conn, selectors.EVENT_WRITE, data)
 
     def write(self, key, mask):
-        res = Response()
-        self.response_factory(key.data["req"], res)
-
-        key.fileobj.send(res.pack())
-        self.sel.unregister(key.fileobj)
-
-    def handle_connection(self, key: selectors.SelectorKey, mask):
         conn = key.fileobj
         addr = key.data["addr"]
 
-        if mask & selectors.EVENT_READ:
-            print(f"ready to read!")
-            header = conn.recv(HEADER_SIZE)
-            if header:
-                # Header
-                log.debug("Received message ({} bytes): {}".format(len(header), header))
-                client_id, _, code_type, length = Request.unpack_header(header)
+        res = Response()
+        self.response_factory(key.data["req"], res)
 
-                # Body
-                data = conn.recv(length)
-                log.debug("Received message ({} bytes): {}".format(len(data), data))
-                key.data["req"] = Request(RequestEnum(code_type), client_id, data)
-                print(f"HEYYYY\n{key.data.req}")
+        conn.send(res.pack())
+        self.close_connection(conn, addr)
 
-            else:
-                log.info(f"[-] Connection terminated from {addr[0]}:{addr[1]}")
-                self.sel.unregister(conn)
-                conn.close()
-
-        if mask & selectors.EVENT_WRITE:
-            print(f"ready to write!")
-            with conn:
-                # Response
-                res = Response()
-                print(f"HOYYYYY\n{key.data['req']}")
-                self.response_factory(key.data["req"], res)
-
-                conn.send(res.pack())
+    def close_connection(self, conn, addr):
+        log.info(f"[-] Connection terminated from {addr[0]}:{addr[1]}")
+        self.sel.unregister(conn)
+        conn.close()
 
     # Request: REG_REQUEST -> Response: REG_SUCCESS/ERROR
     def register_user(self, req, res):
@@ -181,8 +152,11 @@ class Server:
         if req.client_id in self.messages:
             log.debug(f"Number of messages: {len(self.messages[req.client_id])}")
             for message in self.messages[req.client_id]:
-                res.payload_size += MessageData.MESSAGE_HEADER_SIZE + message.ContentSize
-                res.data["messages"] += message.pack(req.client_id)
+                log.debug(f"Sending message: {message}")
+
+                log.debug(f"HEX CONTENT: {message.Content.hex()}")
+                res.payload_size += MessageData.MESSAGE_RES_HEADER_SIZE + message.ContentSize
+                res.data["messages"] += message.pack()
             log.debug(f"Sending messages: {res.payload_size} bytes")
         else:
             res.payload_size = 0
@@ -191,6 +165,7 @@ class Server:
     def send_message(self, req: Request, res):
         res.code_type = ResponseEnum.MESSAGE_SENT
         message = MessageData(req.data["msg_recipient"], req.client_id, req.data["msg_type"], req.data["msg_len"], req.data["msg_body"])
+
         self.messages[req.data["msg_recipient"]].append(message)
 
         res.data["msg_recipient"] = req.data["msg_recipient"]
