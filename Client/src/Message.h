@@ -16,7 +16,7 @@
 #include <boost/asio.hpp>
 #include <boost/algorithm/hex.hpp>
 #include <boost/endian/conversion.hpp>
-//  
+//
 
 #define MESSAGE_BUFFER_SIZE 1024
 
@@ -90,7 +90,7 @@ private:
     void response_msg_sent();
 
 public:
-    Message(tcp::socket &, UsersList *users, Crypto *crypt);
+    Message(tcp::socket &, std::array<char, CLIENT_UUID_LENGTH> id, UsersList *users, Crypto *crypt);
     ~Message();
 
     bool process_msg(const int);

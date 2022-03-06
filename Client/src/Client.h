@@ -38,6 +38,7 @@ public:
     ~Client();
     // ~Client();
     std::vector<std::string> read_server_info();
+    std::array<char, CLIENT_UUID_LENGTH> getID() const;
     UsersList *getUsers();
     Crypto *getCipherSuite();
     int main_menu();

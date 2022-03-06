@@ -37,6 +37,7 @@ private:
 public:
     void append(User &u);
     std::array<char, CLIENT_UUID_LENGTH> getUid(std::string &name);
+    std::string getUsername(std::array<char, CLIENT_UUID_LENGTH> &uid);
 
     void setPubKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<char, PUBLIC_KEY_SIZE> key);
     void setSymKey(std::array<char, CLIENT_UUID_LENGTH> &id, std::array<char, SYMMETRIC_KEY_SIZE> key);

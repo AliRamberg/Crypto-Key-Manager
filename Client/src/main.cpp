@@ -11,18 +11,18 @@ int main(void)
         std::string host = server_endpoints.front();
         std::string port = server_endpoints.back();
 
-        /* establish socket connection */
-        boost::asio::io_context io_context;
-        tcp::resolver resolver(io_context);
-        tcp::socket s(io_context);
-        boost::asio::connect(s, resolver.resolve(host, port));
-        std::cout << "Connecting to " << host << ":" << port << " ..." << std::endl;
-
-        // TODO: Convert all the codes ints to Enums
-
-        Message msg(s, c.getUsers(), c.getCipherSuite());
-        while (s.is_open())
+        while (true)
         {
+            /* establish socket connection */
+            boost::asio::io_context io_context;
+            tcp::resolver resolver(io_context);
+            tcp::socket s(io_context);
+            boost::asio::connect(s, resolver.resolve(host, port));
+            std::cout << "Connecting to " << host << ":" << port << " ..." << std::endl;
+
+            // TODO: Convert all the codes ints to Enums
+
+            Message msg(s, c.getID(), c.getUsers(), c.getCipherSuite());
             int input_code = c.main_menu();
             if (!input_code)
             {

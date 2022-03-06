@@ -2,9 +2,11 @@
 
 Client::Client()
 {
+    users = new UsersList();
     if (!std::filesystem::exists(CREDS_FILE))
     {
         cipher_suite = new Crypto();
+        client_id.fill('\0');
     }
     else if (!read_creds())
     {
@@ -15,7 +17,6 @@ Client::Client()
         // valid creds file
         cipher_suite = new Crypto(encoded_private_key);
     }
-    users = new UsersList();
 }
 
 bool Client::read_creds()
@@ -43,13 +44,11 @@ bool Client::read_creds()
     auto unhex = boost::algorithm::unhex(line);
     std::copy(unhex.begin(), unhex.end(), client_id.data());
     std::cout << "parse client_id: " << unhex << '\n';
+    std::copy(unhex.begin(), unhex.end(), client_id.data());
 
     // Private Key
     std::getline(file, line);
-    if (/* !std::all_of(line.begin(), line.end(), ::is) ||  */ line.size() != Client::PRIVATE_HEX_LEN)
-    {
-        return false;
-    }
+
     encoded_private_key = line;
     std::cout << "parse private_key: " << encoded_private_key << '\n';
 
@@ -102,8 +101,9 @@ std::vector<std::string> Client::read_server_info()
     std::ifstream in(filename, std::ios::in);
     if (!in.is_open())
     {
-        std::cout << "failed to open " << filename << '\n';
-        return {};
+        throw std::runtime_error(std::string("failed to open " + filename));
+        // std::cout << "failed to open " << filename << '\n';
+        // return {};
     }
 
     std::vector<std::string> args;
@@ -134,6 +134,11 @@ UsersList *Client::getUsers()
 Crypto *Client::getCipherSuite()
 {
     return cipher_suite;
+}
+
+std::array<char, CLIENT_UUID_LENGTH> Client::getID() const
+{
+    return client_id;
 }
 
 /* void Client::connect(const std::string &host, const std::string &port)

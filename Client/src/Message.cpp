@@ -1,6 +1,13 @@
 #include "Message.h"
 
-Message::Message(tcp::socket &s, UsersList *users, Crypto *crypt) : s(s), users(users), crypt(crypt) {}
+Message::Message(tcp::socket &s, std::array<char, CLIENT_UUID_LENGTH> uid, UsersList *users, Crypto *crypt) : s(s), users(users), crypt(crypt)
+{
+    if (!std::all_of(uid.begin(), uid.end(), [](const char c)
+                     { return c == '\0'; }))
+    {
+        req.header.client_id = uid;
+    }
+}
 
 Message::~Message()
 {
@@ -366,19 +373,22 @@ void Message::response_messages()
     {
         std::array<char, CLIENT_UUID_LENGTH> sender_id;
         std::uint32_t message_id;
-        MessageType_E message_type;
+        std::uint8_t message_type;
         std::uint32_t message_size;
     } res_t;
-    boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res_t), sizeof(res_t)));
 
     size_t msgs_bytes_left = res.header.payload_size;
     size_t bytes_read = 0;
+
     std::cout << "New messages: " << msgs_bytes_left << " bytes" << std::endl;
     while (bytes_read < msgs_bytes_left)
     {
-        std::cout << "From: " << res_t.sender_id.data() << '\n'
+        bytes_read += boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res_t), MESSAGE_HEADER_SIZE));
+        // USER WAS NOT FOUND!
+        auto username = users->getUsername(res_t.sender_id);
+        std::cout << "From: " << username << '\n'
                   << "Content: ";
-        switch (res_t.message_size)
+        switch (res_t.message_type)
         {
         case MessageType_E::REQ_SYM:
             std::cout << "Request for symmetric key\n";
@@ -388,7 +398,7 @@ void Message::response_messages()
             std::cout << "Symmetric key received\n";
 
             std::array<char, SYMMETRIC_KEY_SIZE> encrypted_sym;
-            boost::asio::read(s, boost::asio::buffer(encrypted_sym, SYMMETRIC_KEY_SIZE));
+            bytes_read += boost::asio::read(s, boost::asio::buffer(encrypted_sym, SYMMETRIC_KEY_SIZE));
 
             // RSA Decryption
             std::string recoved_sym;
@@ -465,7 +475,8 @@ std::array<char, CLIENT_UUID_LENGTH> Message::client_input()
     if (std::all_of(user_id.begin(), user_id.end(), [](char c)
                     { return c == '\0'; }))
     {
-        throw std::runtime_error(std::string("Username \"" + username + "\" was not found\n"));
+        std::cerr << "Username \"" << username << "\" was not found\n";
+        return {};
     }
     return user_id;
 }

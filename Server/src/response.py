@@ -35,5 +35,5 @@ class Response:
                 print("Response: Nothing")  # REMOVEME
                 res_body = b""
 
-        log.debug(f"Response {ResponseEnum(self.code_type)}: body {len(res_body)} bytes")
+        log.debug(f"Response body {ResponseEnum(self.code_type)}: {len(res_body)} bytes, {res_body}")
         return res_header + res_body
