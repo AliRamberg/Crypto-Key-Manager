@@ -73,6 +73,7 @@ class Server:
 
     def read(self, key, mask):
         conn = key.fileobj
+        conn.setblocking(False)
         addr = key.data["addr"]
 
         header = conn.recv(HEADER_SIZE)
