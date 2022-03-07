@@ -44,7 +44,7 @@ class Server:
         self.sel = selectors.DefaultSelector()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 s.bind((self.host, self.port))
                 s.listen(10)
                 log.info(f"Server listening on port {self.port}")
