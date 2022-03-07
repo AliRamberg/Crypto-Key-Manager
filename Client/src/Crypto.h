@@ -2,6 +2,7 @@
 #define _CRYPTO_H
 
 #include <tuple>
+#include <array>
 
 #ifdef __APPLE__
 #include <cryptopp/modes.h>
@@ -21,7 +22,7 @@
 #endif
 
 #define KEY_SIZE 1024
-#define SYMMETRIC_KEY_SIZE 128
+#define SYMMETRIC_KEY_SIZE 16
 #define PUBLIC_KEY_SIZE 160
 
 class Crypto
@@ -51,9 +52,10 @@ public:
     std::string decryptData(std::string &cipher);
 
     // AES Cipher Suite
-    static void generateAESKey(CryptoPP::SecByteBlock *key_out);
-    static void encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, std::string &cipher);
-    static void decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, std::string &recovered);
+
+    static std::string generateAESKey();
+    static void encryptAES(const std::string &plain, std::array<char, SYMMETRIC_KEY_SIZE> &key, std::string &cipher);
+    static void decryptAES(std::string &cipher, std::array<char, SYMMETRIC_KEY_SIZE> &key, std::string &recovered);
 };
 
 #endif

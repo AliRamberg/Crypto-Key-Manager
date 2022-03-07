@@ -102,7 +102,7 @@ std::string Crypto::encryptData(std::string &plain_string, std::string &public_k
 {
     CryptoPP::RSA::PublicKey pub;
 
-    CryptoPP::StringSource pub_source(reinterpret_cast<const CryptoPP::byte *>(public_key.data()), public_key.size(), true);
+    CryptoPP::StringSource pub_source(reinterpret_cast<const CryptoPP::byte *>(public_key.c_str()), public_key.size(), true);
     pub.Load(pub_source);
 
     std::string cipher;
@@ -117,41 +117,72 @@ std::string Crypto::decryptData(std::string &cipher)
 {
     std::string decrypted;
 
+    std::cout << "Z1" << std::endl;
     CryptoPP::RSAES_OAEP_SHA_Decryptor d(private_key);
+    std::cout << "Z2" << std::endl;
     CryptoPP::StringSource ss_cipher(cipher, true, new CryptoPP::PK_DecryptorFilter(rng, d, new CryptoPP::StringSink(decrypted)));
+    std::cout << "Z3" << std::endl;
 
     return decrypted;
 }
 
-void Crypto::generateAESKey(CryptoPP::SecByteBlock *key_out)
+std::string Crypto::generateAESKey()
 {
     CryptoPP::AutoSeededRandomPool rng;
 
-    CryptoPP::SecByteBlock key(CryptoPP::AES::DEFAULT_KEYLENGTH);
+    // CryptoPP::SecByteBlock key(CryptoPP::AES::DEFAULT_KEYLENGTH);
+    CryptoPP::byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
 
-    rng.GenerateBlock(key, key.size());
+    rng.GenerateBlock(key, sizeof(key));
 
-    *key_out = key;
+    std::string out((char *)key, sizeof(key));
+    return out;
 }
 
-void Crypto::encryptAES(std::string &plain, CryptoPP::SecByteBlock &key, std::string &cipher)
+void Crypto::encryptAES(const std::string &plain, std::array<char, SYMMETRIC_KEY_SIZE> &key, std::string &cipher)
 {
-    CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption e;
-    CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
-    iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
+    // CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption e;
+    // CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
+    // iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
 
-    e.SetKeyWithIV(key, key.size(), iv);
+    // e.SetKeyWithIV(key, key.size(), iv);
 
-    CryptoPP::StringSource s(plain, true, new CryptoPP::StreamTransformationFilter(e, new CryptoPP::StringSink(cipher)));
+    // CryptoPP::StringSource s(plain, true, new CryptoPP::StreamTransformationFilter(e, new CryptoPP::StringSink(cipher)));
+
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE] = {0}; // for practical use iv should never be a fixed value!
+
+    CryptoPP::AES::Encryption aesEncryption(reinterpret_cast<const CryptoPP::byte *>(key.data()), key.size());
+    CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption(aesEncryption, iv);
+
+    std::string cipher_txt;
+    CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink(cipher_txt));
+    stfEncryptor.Put(reinterpret_cast<const CryptoPP::byte *>(plain.data()), plain.size());
+    stfEncryptor.MessageEnd();
+
+    cipher = cipher_txt;
+    // return cipher;
 }
 
-void Crypto::decryptAES(std::string &cipher, CryptoPP::SecByteBlock &key, std::string &recovered)
+void Crypto::decryptAES(std::string &cipher, std::array<char, SYMMETRIC_KEY_SIZE> &key, std::string &recovered)
 {
-    CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption d;
-    CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
-    iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
+    // CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption d;
+    // CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
+    // iv.Assign(CryptoPP::AES::BLOCKSIZE, (CryptoPP::byte)'\0');
 
-    d.SetKeyWithIV(key, key.size(), iv);
+    // d.SetKeyWithIV(key, key.size(), iv);
 
-    CryptoPP::StringSource s(cipher, true, new CryptoPP::StreamTransformationFilter(d, new CryptoPP::StringSink(recovered))); // StringSource
+    // CryptoPP::StringSource s(cipher, true, new CryptoPP::StreamTransformationFilter(d, new CryptoPP::StringSink(recovered))); // StringSource
+
+    CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE] = {0}; // for practical use iv should never be a fixed value!
+
+    CryptoPP::AES::Decryption aesDecryption(reinterpret_cast<const CryptoPP::byte *>(key.data()), key.size());
+    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
+
+    std::string decrypted;
+    CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
+    stfDecryptor.Put(reinterpret_cast<const CryptoPP::byte *>(cipher.data()), cipher.size());
+    stfDecryptor.MessageEnd();
+
+    recovered = decrypted;
+    // return decrypted;
 }

@@ -197,7 +197,7 @@ bool Message::request_send_text()
     msg.message_type = MessageType_E::SND_TXT;
 
     std::cout << "Enter message content: " << std::endl;
-    std::cin >> content;
+    std::getline(std::cin >> std::ws, content);
 
     // AES Cryptography
     auto symkey = users->getSymKey(username);
@@ -208,9 +208,9 @@ bool Message::request_send_text()
         throw std::runtime_error("invalid symmetric key");
     }
 
-    CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
+    // CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
     std::string cipher;
-    Crypto::encryptAES(content, key, cipher);
+    Crypto::encryptAES(content, symkey, cipher);
 
     msg.message_size = cipher.size();
     req.header.payload_length = MESSAGE_REQ_HEADER_SIZE + cipher.size();
@@ -248,25 +248,20 @@ bool Message::request_recv_symkey()
 
     auto [username, client_id] = client_input();
     auto pubkey = users->getPubKey(client_id);
-    std::string pubkey_str(pubkey.begin(), pubkey.end());
 
     if (std::all_of(pubkey.begin(), pubkey.end(), [](char c)
                     { return c == '\0'; }))
     {
         throw std::runtime_error("Invalid public key, try to retreive user public key");
     }
-    CryptoPP::SecByteBlock key;
-    Crypto::generateAESKey(&key);
 
-    // std::array<char, SYMMETRIC_KEY_SIZE> key_arr;
-    // std::copy(key.begin(), key.end(), key_arr.data());
-    std::string key_str((char *)key.BytePtr(), key.size());
-    users->setSymKey(client_id, key_str);
+    std::string key = Crypto::generateAESKey();
+
+    users->setSymKey(client_id, key);
 
     // RSA Encryption
-    // CryptoPP::SecByteBlock cipher;
-    auto cipher = crypt->encryptData(key_str, pubkey_str);
-    // crypt->encryptData(key_str, &cipher);
+    std::string pubkey_str(pubkey.begin(), pubkey.end());
+    auto cipher = crypt->encryptData(key, pubkey_str);
 
     msg.message_type = MessageType_E::SND_SYM;
     msg.recipient = client_id;
@@ -383,10 +378,8 @@ void Message::response_messages()
         {
             std::cout << "Symmetric key received\n";
 
-            std::array<char, SYMMETRIC_KEY_SIZE> encrypted_sym;
-            bytes_read += boost::asio::read(s, boost::asio::buffer(encrypted_sym, SYMMETRIC_KEY_SIZE));
-            std::string str(encrypted_sym.begin(), encrypted_sym.end());
-            auto hex = boost::algorithm::hex(str);
+            std::array<char, ENCRYPTED_BUFFER_SIZE> encrypted_sym;
+            bytes_read += boost::asio::read(s, boost::asio::buffer(encrypted_sym, ENCRYPTED_BUFFER_SIZE));
 
             // RSA Decryption
             std::string cipher(encrypted_sym.begin(), encrypted_sym.end());
@@ -403,35 +396,41 @@ void Message::response_messages()
             // Full Encrypted message
             std::vector<char> full_message;
 
-            std::array<char, MESSAGE_BUFFER_SIZE> buffer;
+            std::array<char, 16> buffer;
             unsigned cur_msg_bytes_read = 0;
+
             while (cur_msg_bytes_read < res_t.message_size)
             {
-                bytes_read += boost::asio::read(s, boost::asio::buffer(buffer, buffer.size()));
+                cur_msg_bytes_read += boost::asio::read(s, boost::asio::buffer(buffer, buffer.size()));
                 full_message.insert(full_message.end(), buffer.begin(), buffer.end());
             }
 
+            std::cout << "full_msg: " << full_message.data() << std::endl;
+
             // AES Decryption
             auto symkey = users->getSymKey(res_t.sender_id);
-            if (!std::all_of(symkey.begin(), symkey.end(), [](char c)
-                             { return c == '\0'; }))
+            if (std::all_of(symkey.begin(), symkey.end(), [](char c)
+                            { return c == '\0'; }))
             {
                 std::cout << "can't decrypt message\n";
                 break;
             }
             std::string recovered;
-            std::string encrypted(full_message.data());
-            CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
-            Crypto::decryptAES(encrypted, key, recovered);
+            std::string encrypted_full(full_message.begin(), full_message.end());
+            std::string encrypted(encrypted_full);
+            std::cout << "7" << std::endl;
+            // CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
+            Crypto::decryptAES(encrypted, symkey, recovered);
 
             std::cout << recovered;
+            bytes_read += res_t.message_size;
             break;
         }
         default:
             std::cerr << "Failed to parse message header" << std::endl;
             return;
         }
-        std::cout << ".\n.\n-----<EOM>-----\n"
+        std::cout << "\n-----<EOM>-----\n"
                   << std::endl;
     }
 }
