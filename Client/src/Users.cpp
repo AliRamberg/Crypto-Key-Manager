@@ -109,10 +109,8 @@ std::array<char, SYMMETRIC_KEY_SIZE> UsersList::getSymKey(std::string &username)
     const User *user = getUserByName(username);
     if (user)
     {
-        std::cout << "USER FOUND" << std::endl;
         return user->getSymKey();
     }
-    std::cout << "USER NOT FOUND" << std::endl;
     return {};
 }
 

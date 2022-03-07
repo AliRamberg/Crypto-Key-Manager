@@ -117,11 +117,8 @@ std::string Crypto::decryptData(std::string &cipher)
 {
     std::string decrypted;
 
-    std::cout << "Z1" << std::endl;
     CryptoPP::RSAES_OAEP_SHA_Decryptor d(private_key);
-    std::cout << "Z2" << std::endl;
     CryptoPP::StringSource ss_cipher(cipher, true, new CryptoPP::PK_DecryptorFilter(rng, d, new CryptoPP::StringSink(decrypted)));
-    std::cout << "Z3" << std::endl;
 
     return decrypted;
 }

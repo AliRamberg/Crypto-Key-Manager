@@ -33,7 +33,7 @@ bool Client::read_creds()
         return false;
     }
     username = line;
-    std::cout << "parse username: " << username << '\n';
+    // std::cout << "parse username: " << username << '\n';
 
     // ClientID
     std::getline(file, line);
@@ -43,14 +43,14 @@ bool Client::read_creds()
     }
     auto unhex = boost::algorithm::unhex(line);
     std::copy(unhex.begin(), unhex.end(), client_id.data());
-    std::cout << "parse client_id: " << unhex << '\n';
+    // std::cout << "parse client_id: " << unhex << '\n';
     std::copy(unhex.begin(), unhex.end(), client_id.data());
 
     // Private Key
     std::getline(file, line);
 
     encoded_private_key = line;
-    std::cout << "parse private_key: " << encoded_private_key << '\n';
+    // std::cout << "parse private_key: " << encoded_private_key << '\n';
 
     return true;
 }

@@ -123,11 +123,6 @@ bool Message::request_register()
     req.header.code_type = Request_E::REG_REQUEST;
     req.header.payload_length = username_array.size() + public_key.size(); // 255 bytes username + 160 bytes public key
 
-    std::string str(public_key.begin(), public_key.end());
-    auto hex = boost::algorithm::hex(str);
-
-    std::cout << hex << std::endl;
-
     // MessageData body
     req.body = new char[req.header.payload_length];
     std::memset(req.body, 0, req.header.payload_length);
@@ -405,8 +400,6 @@ void Message::response_messages()
                 full_message.insert(full_message.end(), buffer.begin(), buffer.end());
             }
 
-            std::cout << "full_msg: " << full_message.data() << std::endl;
-
             // AES Decryption
             auto symkey = users->getSymKey(res_t.sender_id);
             if (std::all_of(symkey.begin(), symkey.end(), [](char c)
@@ -418,8 +411,6 @@ void Message::response_messages()
             std::string recovered;
             std::string encrypted_full(full_message.begin(), full_message.end());
             std::string encrypted(encrypted_full);
-            std::cout << "7" << std::endl;
-            // CryptoPP::SecByteBlock key((CryptoPP::byte *)symkey.data(), symkey.size());
             Crypto::decryptAES(encrypted, symkey, recovered);
 
             std::cout << recovered;
@@ -443,7 +434,7 @@ void Message::response_msg_sent()
         std::array<char, CLIENT_UUID_LENGTH> recipient_id;
         std::uint32_t message_id;
     } res_t;
-    std::cout << "Reading Body: " << sizeof(res_t) << " bytes" << std::endl;
+    // std::cout << "Reading Body: " << sizeof(res_t) << " bytes" << std::endl;
     boost::asio::read(s, boost::asio::buffer(reinterpret_cast<void *>(&res_t), sizeof(res_t)));
 }
 
